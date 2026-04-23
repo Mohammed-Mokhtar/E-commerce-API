@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
+      default:
+        "https://res.cloudinary.com/dlqwpjztn/image/upload/v1776903265/users/defaultUser.webp",
     },
     isDeleted: {
       type: Boolean,
