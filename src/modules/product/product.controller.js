@@ -14,6 +14,10 @@ import {
 } from "./product.service.js";
 import { APIFeatures } from "../../utils/APIFeatures.js";
 import { Product } from "../../database/models/product.model.js";
+import {
+  resizeAndUploadMultipleImage,
+  uploadPhoto,
+} from "../../middleware/imageUpload.js";
 
 const router = Router();
 
@@ -21,7 +25,12 @@ router.post(
   "/",
   auth,
   checkRole("admin"),
+  uploadPhoto.fields([
+    { name: "image", maxCount: 1 },
+    { name: "gallery", maxCount: 5 },
+  ]),
   validate(addProductSchema),
+  resizeAndUploadMultipleImage,
   addProduct,
 );
 
@@ -29,7 +38,12 @@ router.put(
   "/:id",
   auth,
   checkRole("admin"),
+  uploadPhoto.fields([
+    { name: "image", maxCount: 1 },
+    { name: "gallery", maxCount: 5 },
+  ]),
   validate(updateProductSchema),
+  resizeAndUploadMultipleImage,
   updateProduct,
 );
 

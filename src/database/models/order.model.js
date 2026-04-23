@@ -26,7 +26,7 @@ const orderSchema = new mongoose.Schema(
       ],
       required: true,
     },
-    totalAmount: {
+    totalAmountBeforeDiscount: {
       type: Number,
       required: true,
     },
@@ -64,6 +64,12 @@ const orderSchema = new mongoose.Schema(
       index: true,
       unique: true,
       sparse: true,
+    },
+    totalAmountAfterDiscount: {
+      type: Number,
+    },
+    couponId: {
+      type: mongoose.Schema.Types.ObjectId,
     },
   },
   { timestamps: true },

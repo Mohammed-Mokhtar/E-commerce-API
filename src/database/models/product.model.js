@@ -31,7 +31,10 @@ const productSchema = new mongoose.Schema(
       ref: "subcategories",
       required: true,
     },
-    images: [
+    image: {
+      type: String,
+    },
+    gallery: [
       {
         type: String,
       },

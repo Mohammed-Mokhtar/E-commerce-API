@@ -17,6 +17,7 @@ export const addSubcategory = async (req, res) => {
     const addedSubcategory = await Subcategory.create({
       name,
       categoryId,
+      image: req.imageUrl || "",
     });
 
     return res
@@ -43,11 +44,14 @@ export const updateSubcategory = async (req, res) => {
 
     name = name.charAt(0).toUpperCase() + name.slice(1);
 
-    const subcategory = await Subcategory.findByIdAndUpdate(
-      id,
-      { name, categoryId },
-      { returnDocument: "after" },
-    );
+    const updateData = { name, categoryId };
+    if (req.imageUrl) {
+      updateData.image = req.imageUrl;
+    }
+
+    const subcategory = await Subcategory.findByIdAndUpdate(id, updateData, {
+      returnDocument: "after",
+    });
 
     return res
       .status(200)

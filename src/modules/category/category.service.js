@@ -7,7 +7,15 @@ export const addCategory = async (req, res) => {
 
     name = name.charAt(0).toUpperCase() + name.slice(1);
 
-    const addedCategory = await Category.create({ name });
+    const categoryExists = await Category.findOne({ name });
+    if (categoryExists) {
+      return res.status(409).json({ message: "category already exists" });
+    }
+
+    const addedCategory = await Category.create({
+      name,
+      avatar: req.imageUrl || "",
+    });
     return res
       .status(201)
       .json({ message: "category added successfully", addedCategory });
@@ -25,11 +33,14 @@ export const updateCategory = async (req, res) => {
 
     name = name.charAt(0).toUpperCase() + name.slice(1);
 
-    const category = await Category.findByIdAndUpdate(
-      id,
-      { name },
-      { returnDocument: "after" },
-    );
+    const updateData = { name };
+    if (req.imageUrl) {
+      updateData.avatar = req.imageUrl;
+    }
+
+    const category = await Category.findByIdAndUpdate(id, updateData, {
+      returnDocument: "after",
+    });
 
     return res.json({ message: "category updated successfully", category });
   } catch (err) {

@@ -8,7 +8,6 @@ export const addProductSchema = joi.object({
   stock: joi.number().integer().min(0).required(),
   category: joi.string().trim().custom(detectInjection).required(),
   subcategory: joi.string().trim().custom(detectInjection).required(),
-  images: joi.array().items(joi.string().custom(detectInjection)).optional(),
 });
 
 export const updateProductSchema = joi.object({
@@ -18,7 +17,6 @@ export const updateProductSchema = joi.object({
   stock: joi.number().integer().min(0).optional(),
   category: joi.string().trim().custom(detectInjection).optional(),
   subcategory: joi.string().trim().custom(detectInjection).optional(),
-  images: joi.array().items(joi.string().custom(detectInjection)).optional(),
 });
 
 export const updateStockSchema = joi.object({

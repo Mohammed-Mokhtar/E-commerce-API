@@ -11,6 +11,8 @@ export const addProduct = async (req, res) => {
       stock,
       category,
       subcategory,
+      gallery: req.galleryUrls || [],
+      image: req.imageUrl || "",
     });
     return res
       .status(201)
@@ -37,6 +39,8 @@ export const updateProduct = async (req, res) => {
     if (stock !== undefined) product.stock = stock;
     if (category !== undefined) product.category = category;
     if (subcategory !== undefined) product.subcategory = subcategory;
+    if (req.imageUrl !== undefined) product.image = req.imageUrl;
+    if (req.galleryUrls !== undefined) product.gallery = req.galleryUrls;
 
     await product.save();
 

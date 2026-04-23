@@ -16,9 +16,13 @@ export const updateProfile = async (req, res) => {
   try {
     const { name, phone, shippingAddress } = req.body;
 
+    console.log(req.imageUrl);
+
     if (name !== undefined) req.user.name = name;
     if (phone !== undefined) req.user.phone = phone;
-    if (shippingAddress !== undefined) req.user.shippingAddress = shippingAddress;
+    if (shippingAddress !== undefined)
+      req.user.shippingAddress = shippingAddress;
+    if (req.imageUrl !== undefined) req.user.avatar = req.imageUrl;
 
     await req.user.save();
     return res
@@ -63,3 +67,4 @@ export const restoreUser = async (req, res) => {
       .json({ message: "something went wrong", err: err.message });
   }
 };
+

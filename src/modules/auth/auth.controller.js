@@ -31,4 +31,3 @@ router.post("/forgot-password", validate(emailSchema), forgotPassword);
 router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 
 export default router;
-

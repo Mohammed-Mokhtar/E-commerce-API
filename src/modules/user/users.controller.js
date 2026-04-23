@@ -5,6 +5,10 @@ import { validate } from "../../utils/validation.js";
 import { updateProfileSchema } from "./user.validate.js";
 
 import {
+  resizeAndUploadSingleImage,
+  uploadPhoto,
+} from "../../middleware/imageUpload.js";
+import {
   deleteProfile,
   getProfile,
   restoreUser,
@@ -18,7 +22,9 @@ router.get("/profile", auth, getProfile);
 router.put(
   "/profile",
   auth,
+  uploadPhoto.single("avatar"),
   validate(updateProfileSchema),
+  resizeAndUploadSingleImage("users"),
   updateProfile,
 );
 
@@ -32,3 +38,4 @@ router.patch(
 );
 
 export default router;
+

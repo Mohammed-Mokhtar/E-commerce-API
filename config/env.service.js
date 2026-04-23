@@ -17,4 +17,8 @@ export const env = {
   adminPassword: process.env.ADMIN_PASSWORD,
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
   webhookSigningSecret: process.env.WEBHOOK_SIGNING_SECRET,
+  cloudinaryKey: process.env.CLOUDINARY_API_KEY,
+  cloudinarySecretKey: process.env.CLOUDINARY_API_SECRET,
+  cloudinaryName: process.env.CLOUDINARY_CLOUD_NAME,
+  maxFileSize: process.env.MAX_FILE_SIZE,
 };

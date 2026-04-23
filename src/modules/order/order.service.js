@@ -2,10 +2,78 @@ import Stripe from "stripe";
 
 import { env } from "../../../config/env.service.js";
 import { Cart } from "../../database/models/cart.model.js";
+import { Coupon } from "../../database/models/coupons.model.js";
 import { Order } from "../../database/models/order.model.js";
 import { Product } from "../../database/models/product.model.js";
 
 const stripe = new Stripe(env.stripeSecretKey);
+
+const validateAndApplyCoupon = async ({ couponCode, userId, totalAmount }) => {
+  if (!couponCode) return null;
+
+  const normalizedCouponCode =
+    typeof couponCode === "string" ? couponCode.trim() : couponCode;
+
+  if (!normalizedCouponCode) return null;
+
+  const couponDoc = await Coupon.findOne({
+    name: normalizedCouponCode,
+    active: true,
+  });
+
+  if (!couponDoc) {
+    return {
+      status: 404,
+      error: "this coupon does not exist or is inactive",
+    };
+  }
+
+  if (couponDoc.expiresAt && new Date() > new Date(couponDoc.expiresAt)) {
+    return {
+      status: 400,
+      error: "this coupon has expired",
+    };
+  }
+
+  const totalCouponUsage = await Order.countDocuments({
+    couponId: couponDoc._id,
+  });
+
+  if (totalCouponUsage >= couponDoc.usageLimits) {
+    return {
+      status: 400,
+      error: "this coupon has reached its usage limit",
+    };
+  }
+
+  const userCouponUsage = await Order.countDocuments({
+    user: userId,
+    couponId: couponDoc._id,
+  });
+
+  if (userCouponUsage >= couponDoc.perUserLimit) {
+    return {
+      status: 400,
+      error: "you have reached the usage limit for this coupon",
+    };
+  }
+
+  const discountAmount = Number(
+    Math.min(
+      (totalAmount * couponDoc.discountValue) / 100,
+      couponDoc.maxAmount,
+    ).toFixed(2),
+  );
+  const totalAmountAfterDiscount = Number(
+    Math.max(totalAmount - discountAmount, 0).toFixed(2),
+  );
+
+  return {
+    couponDoc,
+    discountAmount,
+    totalAmountAfterDiscount,
+  };
+};
 
 export const fulfillCheckout = async (sessionId) => {
   // Don't put any keys in code. See https://docs.stripe.com/keys-best-practices.
@@ -27,14 +95,20 @@ export const fulfillCheckout = async (sessionId) => {
   // to determine if fulfillment should be performed
   if (checkoutSession.payment_status !== "unpaid") {
     // TODO: Perform fulfillment of the line items
-    await Order.create({
+    const totalAmountBeforeDiscount = Number(
+      (checkoutSession.amount_subtotal ?? checkoutSession.amount_total) / 100,
+    );
+    const totalAmountAfterDiscount = Number(checkoutSession.amount_total) / 100;
+    const couponId = checkoutSession.metadata?.couponId;
+
+    const orderData = {
       user: checkoutSession.client_reference_id,
       items: checkoutSession.line_items.data.map((line_item) => ({
         product: line_item.price.product.metadata.productId,
         quantity: line_item.quantity,
         price: Number(line_item.price.unit_amount) / 100,
       })),
-      totalAmount: Number(checkoutSession.amount_total) / 100,
+      totalAmountBeforeDiscount: totalAmountBeforeDiscount,
       paymentMethod: "card",
       paymentStatus: "paid",
       orderStatus: "pending",
@@ -43,7 +117,14 @@ export const fulfillCheckout = async (sessionId) => {
         phone: checkoutSession.customer_details.phone,
       },
       sessionId: checkoutSession.id,
-    });
+    };
+
+    if (couponId) {
+      orderData.couponId = couponId;
+      orderData.totalAmountAfterDiscount = totalAmountAfterDiscount;
+    }
+
+    await Order.create(orderData);
     await Cart.findOneAndDelete({ user: checkoutSession.client_reference_id });
   }
 };
@@ -69,7 +150,7 @@ export const declineCheckout = async (sessionId) => {
 
 export const checkout = async (req, res) => {
   try {
-    const { paymentMethod } = req.body;
+    const { paymentMethod, coupon } = req.body;
 
     if (!req.user.shippingAddress?.city || !req.user.phone) {
       return res.status(400).json({
@@ -86,15 +167,29 @@ export const checkout = async (req, res) => {
       return res.status(404).json({ message: "cart is empty" });
     }
 
+    const couponData = await validateAndApplyCoupon({
+      couponCode: coupon,
+      userId: req.user._id,
+      totalAmount: cart.totalPrice,
+    });
+
+    if (couponData?.error) {
+      return res.status(couponData.status).json({ message: couponData.error });
+    }
+
+    const totalAfterDiscount = couponData
+      ? couponData.totalAmountAfterDiscount
+      : cart.totalPrice;
+
     if (paymentMethod === "cod") {
-      const order = await Order.create({
+      const orderData = {
         user: req.user._id,
         items: cart.items.map((item) => ({
           product: item.productId._id,
           quantity: item.quantity,
           price: item.price,
         })),
-        totalAmount: cart.totalPrice,
+        totalAmountBeforeDiscount: cart.totalPrice,
         paymentMethod: "cod",
         paymentStatus: "pending",
         orderStatus: "pending",
@@ -102,7 +197,14 @@ export const checkout = async (req, res) => {
           city: req.user.shippingAddress.city,
           phone: req.user.phone,
         },
-      });
+      };
+
+      if (couponData) {
+        orderData.couponId = couponData.couponDoc._id;
+        orderData.totalAmountAfterDiscount = totalAfterDiscount;
+      }
+
+      const order = await Order.create(orderData);
 
       await Cart.findByIdAndDelete(cart._id);
 
@@ -126,22 +228,7 @@ export const checkout = async (req, res) => {
       },
     }));
 
-    for (const item of cart.items) {
-      if (item.productId.stock == 0)
-        return res.status(400).json({
-          message: `${item.productId.name} is out of stock remove it from cart and continue`,
-        });
-      if (item.quantity > item.productId.stock) {
-        return res.status(400).json({
-          message: `Only ${item.productId.stock} units of ${item.productId.name} are available`,
-        });
-      }
-
-      item.productId.stock -= item.quantity;
-      await item.productId.save();
-    }
-
-    const session = await stripe.checkout.sessions.create({
+    const stripeSessionPayload = {
       billing_address_collection: "required",
       phone_number_collection: {
         enabled: true,
@@ -161,7 +248,35 @@ export const checkout = async (req, res) => {
       line_items,
       mode: "payment",
       expires_at: Math.floor(Date.now() / 1000) + 3600 * 2,
-    });
+      metadata: couponData
+        ? {
+            couponId: couponData.couponDoc._id.toString(),
+          }
+        : undefined,
+    };
+
+    if (couponData) {
+      stripeSessionPayload.discounts = [{ coupon: couponData.couponDoc.name }];
+    } else {
+      stripeSessionPayload.allow_promotion_codes = true;
+    }
+
+    const session = await stripe.checkout.sessions.create(stripeSessionPayload);
+
+    for (const item of cart.items) {
+      if (item.productId.stock == 0)
+        return res.status(400).json({
+          message: `${item.productId.name} is out of stock remove it from cart and continue`,
+        });
+      if (item.quantity > item.productId.stock) {
+        return res.status(400).json({
+          message: `Only ${item.productId.stock} units of ${item.productId.name} are available`,
+        });
+      }
+
+      item.productId.stock -= item.quantity;
+      await item.productId.save();
+    }
 
     return res.status(200).json({
       message: "checkout session created",
@@ -259,3 +374,4 @@ export const updateOrderStatus = async (req, res) => {
       .json({ message: "something went wrong", err: err.message });
   }
 };
+

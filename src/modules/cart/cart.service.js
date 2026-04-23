@@ -6,8 +6,8 @@ const calcTotalItemPrice = (price, quantity) =>
 
 const findUserCart = (userId) => Cart.findOne({ user: userId });
 
-const findActiveProduct = (productId) =>
-  Product.findOne({
+const findActiveProduct = async (productId) =>
+  await Product.findOne({
     _id: productId,
     isDeleted: false,
   });
@@ -16,6 +16,11 @@ const findIndex = (cart, productId) => {
   return cart.items.findIndex(
     (item) => String(item.productId) === String(productId),
   );
+};
+
+const deleteItemFromCart = (cart, indexItem) => {
+  cart.items.splice(indexItem, 1);
+  return cart.items.length === 0;
 };
 
 export const addItemToCart = async (req, res) => {
@@ -115,11 +120,23 @@ export const updateCartItem = async (req, res) => {
     const itemIndex = findIndex(cart, productId);
 
     if (itemIndex === -1)
-      return res.status(404).json({ message: "product not found" });
+      return res.status(404).json({ message: "product not found in the cart" });
 
     const product = await findActiveProduct(productId);
 
-    if (!product) return res.status(404).json({ message: "product not found" });
+    if (!product) {
+      const isCartEmpty = deleteItemFromCart(cart, itemIndex);
+
+      if (isCartEmpty) {
+        await Cart.findByIdAndDelete(cart._id);
+      } else {
+        await cart.save();
+      }
+
+      return res
+        .status(404)
+        .json({ message: "product not found and deleted from the cart" });
+    }
 
     if (quantity > product.stock)
       return res.status(400).json({ message: "insufficient stock available" });
@@ -154,19 +171,16 @@ export const deleteCartItem = async (req, res) => {
     const indexItem = findIndex(cart, productId);
 
     if (indexItem === -1)
-      return res.status(404).json({ message: "product not found" });
+      return res.status(404).json({ message: "product not found in the cart" });
 
-    const deletedItem = cart.items.splice(indexItem, 1);
+    const isCartEmpty = deleteItemFromCart(cart, indexItem);
 
-    if (!cart.items.length) {
+    if (isCartEmpty) {
       await Cart.findByIdAndDelete(cart._id);
-      return res
-        .status(200)
-        .json({ message: "item deleted successfully", deletedItem });
+      return res.status(200).json({ message: "item deleted successfully" });
     }
 
     await cart.save();
-
     return res.status(200).json({ message: "item deleted successfully", cart });
   } catch (err) {
     return res
@@ -189,3 +203,4 @@ export const clearCart = async (req, res) => {
       .json({ message: "something went wrong", err: err.message });
   }
 };
+

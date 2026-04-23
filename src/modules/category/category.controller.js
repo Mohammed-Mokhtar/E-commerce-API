@@ -13,6 +13,10 @@ import {
   getCategories,
   getSubcategoriesByCategory,
 } from "./category.service.js";
+import {
+  resizeAndUploadSingleImage,
+  uploadPhoto,
+} from "../../middleware/imageUpload.js";
 
 const router = Router();
 
@@ -20,7 +24,9 @@ router.post(
   "/",
   auth,
   checkRole("admin"),
+  uploadPhoto.single("avatar"),
   validate(addCategorySchema),
+  resizeAndUploadSingleImage("category"),
   addCategory,
 );
 
@@ -28,7 +34,9 @@ router.put(
   "/:id",
   auth,
   checkRole("admin"),
+  uploadPhoto.single("avatar"),
   validate(updateCategorySchema),
+  resizeAndUploadSingleImage("category"),
   updateCategory,
 );
 
