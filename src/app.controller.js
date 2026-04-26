@@ -22,6 +22,7 @@ import {
   fulfillCheckout,
 } from "./modules/order/order.service.js";
 
+// test push
 const stripe = new Stripe(env.stripeSecretKey);
 
 export const bootstrap = () => {
@@ -107,3 +108,4 @@ export const bootstrap = () => {
     console.log(`listening on port ${env.port}`);
   });
 };
+
