@@ -4,7 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "node --watch src/main.js"
+    "start:dev": "node --watch src/main.js",
+    "start": "node src/main.js"
   },
   "keywords": [],
   "author": "",
@@ -29,3 +30,4 @@
     "winston": "^3.19.0"
   }
 }
+
