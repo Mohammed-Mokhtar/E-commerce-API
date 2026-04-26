@@ -22,7 +22,6 @@ import {
   fulfillCheckout,
 } from "./modules/order/order.service.js";
 
-// test push
 const stripe = new Stripe(env.stripeSecretKey);
 
 export const bootstrap = () => {
