@@ -77,6 +77,10 @@ export const bootstrap = () => {
 
   databaseConnection();
 
+  app.get("/", (req, res) => {
+    return res.status(200).json({ message: "Ecommerce API is running" });
+  });
+
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/users", userRouter);
   app.use("/api/v1/categories", categoryRouter);
@@ -87,6 +91,10 @@ export const bootstrap = () => {
   app.use("/api/v1/orders", orderRouter);
   app.use("/api/v1/admin/coupons", adminCouponRouter);
   app.use("/api/v1/coupons", couponRouter);
+
+  app.use((req, res) => {
+    return res.status(404).json({ message: "Route not found" });
+  });
 
   app.use((err, req, res, next) => {
     if (res.headersSent) {
@@ -107,4 +115,3 @@ export const bootstrap = () => {
     console.log(`listening on port ${env.port}`);
   });
 };
-
