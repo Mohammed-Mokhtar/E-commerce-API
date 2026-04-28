@@ -94,7 +94,7 @@ export const login = async (req, res) => {
       refreshToken,
     });
   } catch (err) {
-    res.status(500).json({ message: "something went wrong", err });
+    res.status(500).json({ message: "something went wrong", err: err.message });
   }
 };
 
@@ -210,3 +210,4 @@ export const resetPassword = async (req, res) => {
     return res.status(500).json({ message: "something went wrong", err });
   }
 };
+
