@@ -24,7 +24,7 @@ import {
 
 const stripe = new Stripe(env.stripeSecretKey);
 
-export const bootstrap = () => {
+export const bootstrap = async () => {
   const app = express();
 
   app.post(
@@ -75,7 +75,7 @@ export const bootstrap = () => {
   app.use(helmet());
   app.use(cors({ origin: "*" }));
 
-  databaseConnection();
+  await databaseConnection();
 
   app.get("/", (req, res) => {
     return res.status(200).json({ message: "Ecommerce API is running" });
