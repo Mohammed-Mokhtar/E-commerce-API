@@ -16,7 +16,7 @@ export const sendVerificationLink = async (user) => {
       expiresIn: env.verifyTokenExpiresIn,
     });
 
-    const verificationLink = `http://localhost:3000/api/v1/auth/verify-email/${token}`;
+    const verificationLink = `https://e-commerce-mokhtar.vercel.app/api/v1/auth/verify-email/${token}`;
 
     await sendMail(
       user.email,
